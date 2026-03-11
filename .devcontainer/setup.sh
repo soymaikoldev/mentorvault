@@ -42,7 +42,8 @@ echo "================ Wallet Address: ======================"
 echo "========================================"
 solana-keygen new --no-bip39-passphrase --outfile ~/.config/solana/id.json
 
-# Usar printf para enviar el nombre seguido de enter
-printf '%s\n' "template_codespaces" | npx -y create-solana-dapp@latest -t solana-foundation/templates/kit/react-vite-anchor
-
+npx -y create-solana-dapp@latest \
+    -t solana-foundation/templates/kit/react-vite-anchor \
+    "template_codespaces"
+    
 echo "Entorno listo para usar!!! :D"

@@ -168,7 +168,9 @@ fi
 
 echo "--- Creando proyecto dApp ---"
 
-printf '%s\n' "template_codespaces" | npx -y create-solana-dapp@latest -t solana-foundation/templates/kit/react-vite-anchor
+npx -y create-solana-dapp@latest \
+    -t solana-foundation/templates/kit/react-vite-anchor \
+    "template_codespaces"
 
 echo "========================================"
 echo "✅ Entorno listo para usar!!! :D"
