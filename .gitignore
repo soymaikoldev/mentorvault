@@ -43,3 +43,9 @@ next-env.d.ts
 # anchor build artifacts
 /anchor/.anchor/
 /anchor/target/
+
+# local worktrees
+.worktrees/
+
+# local leftover from pre-move app directory (should not be committed)
+mentorvault-app/
