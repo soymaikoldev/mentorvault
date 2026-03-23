@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import { useWalletConnection } from "@solana/react-hooks";
 import type { Address } from "@solana/kit";
@@ -52,7 +52,7 @@ export default function Home() {
               devnet
             </span>
             <span className="rounded-md bg-white/5 border border-white/8 px-2.5 py-1 font-mono text-xs text-gray-600 hidden sm:block">
-              4RqpxT…m1yX
+              4RqpxT...m1yX
             </span>
           </div>
         </div>
@@ -116,7 +116,7 @@ function NotConnectedCard() {
               disabled={status === "connecting"}
               className="rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-white/10 hover:-translate-y-0.5 disabled:opacity-60"
             >
-              {status === "connecting" ? "Conectando…" : c.name}
+              {status === "connecting" ? "Conectando..." : c.name}
             </button>
           ))}
         </div>
@@ -124,7 +124,7 @@ function NotConnectedCard() {
       <p className="text-xs text-gray-700">
         ¿Necesitas SOL de prueba?{" "}
         <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400 underline">
-          Faucet de devnet →
+          Faucet de devnet ->
         </a>
       </p>
     </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useSendTransaction } from "@solana/react-hooks";
 import type { Address } from "@solana/kit";
@@ -92,7 +92,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
           {msg.text}
           {msg.sig && (
             <a href={explorerTxUrl(msg.sig)} target="_blank" rel="noreferrer" className="ml-2 underline opacity-80 hover:opacity-100">
-              Ver en Explorer →
+              Ver en Explorer ->
             </a>
           )}
         </div>
@@ -101,7 +101,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Tus accesos a pools</p>
         <button onClick={loadData} disabled={loading} className="text-xs text-gray-500 hover:text-gray-300 transition">
-          {loading ? "Cargando…" : "↻ Actualizar"}
+          {loading ? "Cargando..." : "Actualizar"}
         </button>
       </div>
 
@@ -152,7 +152,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
                     disabled={isSending || !pool}
                     className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {isBusy ? "Confirmando…" : `Reclamar ${pool ? solFromLamports(pool.rewardPerStudent) + " SOL" : "Reward"}`}
+                    {isBusy ? "Confirmando..." : `Reclamar ${pool ? solFromLamports(pool.rewardPerStudent) + " SOL" : "Reward"}`}
                   </button>
                 )}
               </div>

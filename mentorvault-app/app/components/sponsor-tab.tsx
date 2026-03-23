@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useSendTransaction } from "@solana/react-hooks";
 import type { Address } from "@solana/kit";
@@ -111,7 +111,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
           {msg.text}
           {msg.sig && (
             <a href={explorerTxUrl(msg.sig)} target="_blank" rel="noreferrer" className="ml-2 underline opacity-80 hover:opacity-100">
-              Ver en Explorer →
+              Ver en Explorer ->
             </a>
           )}
         </div>
@@ -165,7 +165,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
           disabled={isSending || !poolName || !rewardSol || !maxStudents}
           className="rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isSending ? "Confirmando…" : "Crear Pool"}
+          {isSending ? "Confirmando..." : "Crear Pool"}
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
                 onChange={(e) => setSelectedPoolAddr(e.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-[#1c1c1f] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500/50 transition"
               >
-                <option value="">Seleccionar pool…</option>
+                <option value="">Seleccionar pool...</option>
                 {pools.map((p) => (
                   <option key={p.address} value={p.address}>{p.poolName}</option>
                 ))}
@@ -192,7 +192,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
               <input
                 value={mentorInput}
                 onChange={(e) => setMentorInput(e.target.value.trim())}
-                placeholder="Base58 address…"
+                placeholder="Base58 address..."
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition font-mono text-xs"
               />
             </div>
@@ -202,7 +202,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
             disabled={isSending || !selectedPoolAddr || mentorInput.length < 32}
             className="rounded-lg border border-violet-500/40 bg-violet-600/20 px-5 py-2.5 text-sm font-semibold text-violet-300 transition hover:bg-violet-600/30 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSending ? "Confirmando…" : "Asignar Mentor"}
+            {isSending ? "Confirmando..." : "Asignar Mentor"}
           </button>
         </div>
       )}
@@ -212,7 +212,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-white">Mis Pools</h3>
           <button onClick={loadPools} disabled={loading} className="text-xs text-gray-500 hover:text-gray-300 transition">
-            {loading ? "Cargando…" : "↻ Actualizar"}
+            {loading ? "Cargando..." : "Actualizar"}
           </button>
         </div>
         {pools.length === 0 ? (

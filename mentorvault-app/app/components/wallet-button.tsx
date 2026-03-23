@@ -40,7 +40,7 @@ export function WalletButton() {
         disabled={status === "connecting"}
         className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-60"
       >
-        {status === "connecting" ? "Conectando…" : "Conectar Wallet"}
+        {status === "connecting" ? "Conectando..." : "Conectar Wallet"}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 rounded-lg border border-white/10 bg-[#1c1c1f] shadow-xl z-50 p-2 min-w-[200px]">

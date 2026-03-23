@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useSendTransaction } from "@solana/react-hooks";
 import type { Address } from "@solana/kit";
@@ -72,7 +72,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
           {msg.text}
           {msg.sig && (
             <a href={explorerTxUrl(msg.sig)} target="_blank" rel="noreferrer" className="ml-2 underline opacity-80 hover:opacity-100">
-              Ver en Explorer →
+              Ver en Explorer ->
             </a>
           )}
         </div>
@@ -81,7 +81,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Pools donde eres mentor</p>
         <button onClick={loadPools} disabled={loading} className="text-xs text-gray-500 hover:text-gray-300 transition">
-          {loading ? "Cargando…" : "↻ Actualizar"}
+          {loading ? "Cargando..." : "Actualizar"}
         </button>
       </div>
 
@@ -114,7 +114,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
               <input
                 value={studentInputs[pool.address] ?? ""}
                 onChange={(e) => setStudentInputs((prev) => ({ ...prev, [pool.address]: e.target.value.trim() }))}
-                placeholder="Pubkey del estudiante (base58)…"
+                placeholder="Pubkey del estudiante (base58)..."
                 className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition font-mono"
               />
               <button
@@ -122,7 +122,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                 disabled={isSending || !studentInputs[pool.address] || (studentInputs[pool.address]?.length ?? 0) < 32 || pool.studentsRewarded >= pool.maxStudents}
                 className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                {isSending ? "Confirmando…" : "Aprobar"}
+                {isSending ? "Confirmando..." : "Aprobar"}
               </button>
             </div>
             {pool.studentsRewarded >= pool.maxStudents && (

@@ -283,7 +283,7 @@ export async function fetchPoolByAddress(addr: Address): Promise<PoolAccount | n
 }
 
 export function shortAddress(addr: string) {
-  return addr.slice(0, 4) + "…" + addr.slice(-4);
+  return addr.slice(0, 4) + "..." + addr.slice(-4);
 }
 
 export function explorerTxUrl(sig: string) {
