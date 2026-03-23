@@ -19,7 +19,10 @@ const {
 } = web3;
 
 const PROGRAM_ID = new PublicKey("Bz1ifM7QV7pBSV9SmzRTDLn7bwYQzZurDpZkMBR1dM7n");
-const RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
+const RPC =
+  process.env.SOLANA_RPC ||
+  process.env.NEXT_PUBLIC_HELIUS_RPC_URL ||
+  "https://api.devnet.solana.com";
 
 const DISC_CREATE_POOL = Buffer.from([233, 146, 209, 142, 207, 104, 64, 188]);
 const DISC_ADD_MENTOR = Buffer.from([246, 91, 90, 224, 82, 235, 65, 66]);

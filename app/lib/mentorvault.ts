@@ -4,6 +4,7 @@ import {
   type Address,
   type ReadonlyUint8Array,
 } from "@solana/kit";
+import { rpcRequest } from "./rpc";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -12,8 +13,6 @@ export const PROGRAM_ADDRESS =
 
 export const SYSTEM_PROGRAM_ADDRESS =
   "11111111111111111111111111111111" as Address;
-
-export const DEVNET_RPC = "https://api.devnet.solana.com";
 
 export const LAMPORTS_PER_SOL = 1_000_000_000n;
 
@@ -227,24 +226,18 @@ type RpcFilter =
   | { dataSize: number };
 
 async function getProgramAccounts(filters: RpcFilter[]) {
-  const resp = await fetch(DEVNET_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getProgramAccounts",
-      params: [
-        PROGRAM_ADDRESS,
-        {
-          encoding: "base64",
-          filters,
-        },
-      ],
-    }),
-  });
-  const json = await resp.json();
-  return (json.result ?? []) as Array<{
+  const { data } = await rpcRequest<Array<{
+    pubkey: string;
+    account: { data: [string, string]; lamports: number };
+  }>>("getProgramAccounts", [
+    PROGRAM_ADDRESS,
+    {
+      encoding: "base64",
+      filters,
+    },
+  ]);
+
+  return (data.result ?? []) as Array<{
     pubkey: string;
     account: { data: [string, string]; lamports: number };
   }>;
@@ -289,38 +282,22 @@ export async function fetchStudentAccessByStudent(
 }
 
 export async function fetchPoolByAddress(addr: Address): Promise<PoolAccount | null> {
-  const resp = await fetch(DEVNET_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getAccountInfo",
-      params: [addr, { encoding: "base64" }],
-    }),
-  });
-  const json = await resp.json();
-  if (!json.result?.value) return null;
-  const bytes = Uint8Array.from(atob(json.result.value.data[0]), (c) => c.charCodeAt(0));
+  const { data } = await rpcRequest<{
+    value: { data: [string, string] } | null;
+  }>("getAccountInfo", [addr, { encoding: "base64" }]);
+  if (!data.result?.value) return null;
+  const bytes = Uint8Array.from(atob(data.result.value.data[0]), (c) => c.charCodeAt(0));
   return parsePoolAccount(addr, bytes);
 }
 
 export async function fetchStudentAccessByAddress(
   addr: Address
 ): Promise<StudentAccessAccount | null> {
-  const resp = await fetch(DEVNET_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getAccountInfo",
-      params: [addr, { encoding: "base64" }],
-    }),
-  });
-  const json = await resp.json();
-  if (!json.result?.value) return null;
-  const bytes = Uint8Array.from(atob(json.result.value.data[0]), (c) => c.charCodeAt(0));
+  const { data } = await rpcRequest<{
+    value: { data: [string, string] } | null;
+  }>("getAccountInfo", [addr, { encoding: "base64" }]);
+  if (!data.result?.value) return null;
+  const bytes = Uint8Array.from(atob(data.result.value.data[0]), (c) => c.charCodeAt(0));
   return parseStudentAccessAccount(addr, bytes);
 }
 
