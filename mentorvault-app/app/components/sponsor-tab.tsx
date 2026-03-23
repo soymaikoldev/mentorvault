@@ -19,19 +19,24 @@ import {
   solFromLamports,
 } from "../lib/mentorvault";
 
-export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
+type Metric = { label: string; value: string; hint?: string };
+
+export function SponsorTab({
+  walletAddress,
+  onMetrics,
+}: {
+  walletAddress: Address;
+  onMetrics?: (items: Metric[]) => void;
+}) {
   const { send, isSending } = useSendTransaction();
 
-  // Create Pool state
   const [poolName, setPoolName] = useState("");
   const [rewardSol, setRewardSol] = useState("");
   const [maxStudents, setMaxStudents] = useState("");
 
-  // Add Mentor state
   const [selectedPoolAddr, setSelectedPoolAddr] = useState("");
   const [mentorInput, setMentorInput] = useState("");
 
-  // Common
   const [pools, setPools] = useState<PoolAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string; sig?: string } | null>(null);
@@ -48,7 +53,30 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
     }
   }, [walletAddress]);
 
-  useEffect(() => { loadPools(); }, [loadPools]);
+  useEffect(() => {
+    loadPools();
+  }, [loadPools]);
+
+  useEffect(() => {
+    if (!onMetrics) return;
+    const totalPools = pools.length;
+    const totalStudents = pools.reduce((s, p) => s + p.studentsRewarded, 0);
+    const totalCapacity = pools.reduce((s, p) => s + p.maxStudents, 0);
+    const releasedLamports = pools.reduce(
+      (s, p) => s + p.rewardPerStudent * BigInt(p.studentsRewarded),
+      0n
+    );
+    const lockedLamports = pools.reduce(
+      (s, p) => s + p.rewardPerStudent * BigInt(p.maxStudents),
+      0n
+    );
+    onMetrics([
+      { label: "Pools activos", value: String(totalPools) },
+      { label: "Estudiantes", value: String(totalStudents), hint: `Cupos ${totalCapacity}` },
+      { label: "Rewards liberados", value: `${solFromLamports(releasedLamports)} SOL` },
+      { label: "Rewards totales", value: `${solFromLamports(lockedLamports)} SOL` },
+    ]);
+  }, [onMetrics, pools]);
 
   const handleCreatePool = async () => {
     if (!poolName || !rewardSol || !maxStudents) return;
@@ -73,7 +101,9 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
       });
 
       setMsg({ type: "success", text: "Pool creado exitosamente.", sig: sig ?? undefined });
-      setPoolName(""); setRewardSol(""); setMaxStudents("");
+      setPoolName("");
+      setRewardSol("");
+      setMaxStudents("");
       await loadPools();
     } catch (e) {
       console.error("Create pool failed", e);
@@ -109,7 +139,6 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
 
   return (
     <div className="space-y-6">
-      {/* Feedback */}
       {msg && (
         <div className={`rounded-lg border px-4 py-3 text-sm ${msg.type === "success" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-red-500/30 bg-red-500/10 text-red-300"}`}>
           {msg.text}
@@ -121,17 +150,16 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
         </div>
       )}
 
-      {/* Create Pool */}
-      <div className="rounded-xl border border-white/8 bg-white/3 p-5 space-y-4">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4 backdrop-blur">
         <h3 className="text-base font-semibold text-white">Crear Pool</h3>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="block mb-1.5 text-xs text-gray-400 font-medium">Nombre del pool <span className="text-gray-600">(máx 32 chars)</span></label>
+            <label className="block mb-1.5 text-xs text-gray-400 font-medium">Nombre del pool <span className="text-gray-600">(max 32 chars)</span></label>
             <input
               value={poolName}
               onChange={(e) => setPoolName(e.target.value.slice(0, 32))}
               placeholder="ej: solana-bootcamp-2025"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition"
             />
           </div>
           <div>
@@ -143,11 +171,11 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
               value={rewardSol}
               onChange={(e) => setRewardSol(e.target.value)}
               placeholder="0.1"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition"
             />
           </div>
           <div>
-            <label className="block mb-1.5 text-xs text-gray-400 font-medium">Máx. estudiantes</label>
+            <label className="block mb-1.5 text-xs text-gray-400 font-medium">Max. estudiantes</label>
             <input
               type="number"
               min="1"
@@ -155,27 +183,26 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
               value={maxStudents}
               onChange={(e) => setMaxStudents(e.target.value)}
               placeholder="10"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition"
             />
           </div>
         </div>
         {rewardSol && maxStudents && parseFloat(rewardSol) > 0 && parseInt(maxStudents) > 0 && (
           <p className="text-xs text-gray-500">
-            Total a depositar: <span className="text-gray-300 font-medium">{(parseFloat(rewardSol) * parseInt(maxStudents)).toFixed(4)} SOL</span>
+            Total a depositar: <span className="text-gray-200 font-medium">{(parseFloat(rewardSol) * parseInt(maxStudents)).toFixed(4)} SOL</span>
           </p>
         )}
         <button
           onClick={handleCreatePool}
           disabled={isSending || !poolName || !rewardSol || !maxStudents}
-          className="rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isSending ? "Confirmando..." : "Crear Pool"}
         </button>
       </div>
 
-      {/* Add Mentor */}
       {pools.length > 0 && (
-        <div className="rounded-xl border border-white/8 bg-white/3 p-5 space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4 backdrop-blur">
           <h3 className="text-base font-semibold text-white">Asignar Mentor</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -183,7 +210,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
               <select
                 value={selectedPoolAddr}
                 onChange={(e) => setSelectedPoolAddr(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1c1c1f] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500/50 transition"
+                className="w-full rounded-lg border border-white/10 bg-[#12151b] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400/60 transition"
               >
                 <option value="">Seleccionar pool...</option>
                 {pools.map((p) => (
@@ -197,21 +224,20 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
                 value={mentorInput}
                 onChange={(e) => setMentorInput(e.target.value.trim())}
                 placeholder="Base58 address..."
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition font-mono text-xs"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition font-mono text-xs"
               />
             </div>
           </div>
           <button
             onClick={handleAddMentor}
             disabled={isSending || !selectedPoolAddr || mentorInput.length < 32}
-            className="rounded-lg border border-violet-500/40 bg-violet-600/20 px-5 py-2.5 text-sm font-semibold text-violet-300 transition hover:bg-violet-600/30 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSending ? "Confirmando..." : "Asignar Mentor"}
           </button>
         </div>
       )}
 
-      {/* Pool list */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold text-white">Mis Pools</h3>
@@ -220,11 +246,11 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
           </button>
         </div>
         {pools.length === 0 ? (
-          <p className="text-sm text-gray-600 py-6 text-center">No has creado ningún pool aún.</p>
+          <p className="text-sm text-gray-500 py-6 text-center">No has creado ningun pool aun.</p>
         ) : (
           <div className="space-y-3">
             {pools.map((p) => (
-              <div key={p.address} className="rounded-xl border border-white/8 bg-white/3 p-4">
+              <div key={p.address} className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-white">{p.poolName}</p>
@@ -237,12 +263,12 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
                       {shortAddress(p.address)}
                     </a>
                   </div>
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.studentsRewarded >= p.maxStudents ? "bg-gray-800 text-gray-400" : "bg-emerald-500/15 text-emerald-400"}`}>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.studentsRewarded >= p.maxStudents ? "bg-white/5 text-gray-400" : "bg-emerald-500/15 text-emerald-400"}`}>
                     {p.studentsRewarded}/{p.maxStudents} estudiantes
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
-                  <div>Reward: <span className="text-gray-300">{solFromLamports(p.rewardPerStudent)} SOL</span></div>
+                  <div>Reward: <span className="text-gray-200">{solFromLamports(p.rewardPerStudent)} SOL</span></div>
                   <div>
                     Mentor:{" "}
                     {p.mentor === "11111111111111111111111111111111" ? (

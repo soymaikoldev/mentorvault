@@ -1,21 +1,21 @@
-import type { Metadata } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+﻿import type { Metadata } from "next";
+import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./components/providers";
 
-const inter = Inter({
-  variable: "--font-inter",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space",
   subsets: ["latin"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "MentorVault — Rewards Educativos en Solana",
+  title: "MentorVault - Rewards Educativos en Solana",
   description:
     "Protocolo donde sponsors depositan SOL como recompensas educativas, controladas por mentores.",
   icons: {
@@ -35,7 +35,7 @@ export default function RootLayout({
       <Providers>
         <body
           suppressHydrationWarning
-          className={`${inter.variable} ${geistMono.variable} antialiased`}
+          className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
         >
           {children}
         </body>

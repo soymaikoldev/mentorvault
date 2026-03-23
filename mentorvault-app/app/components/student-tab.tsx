@@ -25,7 +25,15 @@ type StudentEntry = {
   pool: PoolAccount | null;
 };
 
-export function StudentTab({ walletAddress }: { walletAddress: Address }) {
+type Metric = { label: string; value: string; hint?: string };
+
+export function StudentTab({
+  walletAddress,
+  onMetrics,
+}: {
+  walletAddress: Address;
+  onMetrics?: (items: Metric[]) => void;
+}) {
   const { send, isSending } = useSendTransaction();
   const [entries, setEntries] = useState<StudentEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +61,19 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
   }, [walletAddress]);
 
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    if (!onMetrics) return;
+    const total = entries.length;
+    const submitted = entries.filter((e) => e.access.isSubmitted).length;
+    const approved = entries.filter((e) => e.access.isApproved).length;
+    const claimed = entries.filter((e) => e.access.hasClaimed).length;
+    onMetrics([
+      { label: "Accesos", value: String(total) },
+      { label: "Evidencias", value: String(submitted) },
+      { label: "Aprobados", value: String(approved) },
+      { label: "Reclamados", value: String(claimed) },
+    ]);
+  }, [entries, onMetrics]);
 
   const handleClaim = async (entry: StudentEntry) => {
     if (!entry.pool) return;
@@ -67,10 +88,10 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
         instructions: [{
           programAddress: PROGRAM_ADDRESS,
           accounts: [
-            { address: walletAddress, role: 3 },   // student: WritableSigner
-            { address: poolPda, role: 1 },           // pool: Writable
-            { address: vaultPda, role: 1 },          // vault: Writable
-            { address: studentAccessPda, role: 1 }, // student_access: Writable
+            { address: walletAddress, role: 3 },
+            { address: poolPda, role: 1 },
+            { address: vaultPda, role: 1 },
+            { address: studentAccessPda, role: 1 },
             { address: SYSTEM_PROGRAM_ADDRESS, role: 0 },
           ],
           data: buildClaimRewardData(),
@@ -79,7 +100,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
 
       setMsg({
         type: "success",
-        text: `¡Reward reclamado! ${solFromLamports(entry.pool.rewardPerStudent)} SOL transferidos.`,
+        text: `Reward reclamado: ${solFromLamports(entry.pool.rewardPerStudent)} SOL transferidos.`,
         sig: sig ?? undefined,
       });
       await loadData();
@@ -105,9 +126,9 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
         instructions: [{
           programAddress: PROGRAM_ADDRESS,
           accounts: [
-            { address: walletAddress, role: 3 },   // student: WritableSigner
-            { address: poolPda, role: 0 },           // pool: Readonly
-            { address: studentAccessPda, role: 1 }, // student_access: Writable
+            { address: walletAddress, role: 3 },
+            { address: poolPda, role: 0 },
+            { address: studentAccessPda, role: 1 },
           ],
           data: buildSubmitEvidenceData(evidence),
         }],
@@ -142,17 +163,17 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">Tus accesos a pools</p>
+        <p className="text-sm text-gray-400">Tus accesos a pools</p>
         <button onClick={loadData} disabled={loading} className="text-xs text-gray-500 hover:text-gray-300 transition">
           {loading ? "Cargando..." : "Actualizar"}
         </button>
       </div>
 
       {entries.length === 0 && !loading && (
-        <p className="text-sm text-gray-600 py-10 text-center">
-          No tienes acceso en ningún pool.
+        <p className="text-sm text-gray-500 py-10 text-center">
+          No tienes acceso en ningun pool.
           <br />
-          <span className="text-xs text-gray-700 mt-1 block">Pide al mentor que te registre.</span>
+          <span className="text-xs text-gray-600 mt-1 block">Pide al mentor que te registre.</span>
         </p>
       )}
 
@@ -160,13 +181,20 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
         {entries.map(({ access, pool }) => {
           const isBusy = isSending && claiming === access.address;
           return (
-            <div key={access.address} className="rounded-xl border border-white/8 bg-white/3 p-5">
+            <div key={access.address} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-white">
                     {pool?.poolName ?? <span className="text-gray-500 font-normal">Pool desconocido</span>}
                   </p>
-                  <p className="font-mono text-xs text-gray-500 mt-0.5">{shortAddress(access.pool)}</p>
+                  <a
+                    href={explorerAddressUrl(access.pool)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-xs text-gray-500 mt-0.5 inline-flex hover:text-gray-300 transition"
+                  >
+                    {shortAddress(access.pool)}
+                  </a>
                 </div>
                 <div className="flex gap-2">
                   <StatusBadge label="Enviado" active={access.isSubmitted} />
@@ -177,7 +205,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
 
               {pool && (
                 <div className="mt-3 text-xs text-gray-500 space-y-1">
-                  <div>Reward: <span className="text-gray-300">{solFromLamports(pool.rewardPerStudent)} SOL</span></div>
+                  <div>Reward: <span className="text-gray-200">{solFromLamports(pool.rewardPerStudent)} SOL</span></div>
                   <div>
                     Sponsor:{" "}
                     <a
@@ -203,7 +231,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
                 </div>
               )}
 
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
                 {access.evidenceUri && (
                   <p className="text-xs text-gray-400">
                     Evidencia:{" "}
@@ -211,7 +239,7 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
                       href={access.evidenceUri}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-violet-300 hover:text-violet-200 underline"
+                      className="text-cyan-300 hover:text-cyan-200 underline"
                     >
                       {access.evidenceUri}
                     </a>
@@ -220,25 +248,27 @@ export function StudentTab({ walletAddress }: { walletAddress: Address }) {
                 {access.mentorFeedback && (
                   <p className="text-xs text-gray-400">Feedback: <span className="text-gray-200">{access.mentorFeedback}</span></p>
                 )}
+
                 {!access.isSubmitted && (
                   <div className="space-y-2">
                     <input
                       value={evidenceInputs[access.address] ?? ""}
                       onChange={(e) => setEvidenceInputs((prev) => ({ ...prev, [access.address]: e.target.value.slice(0, 200) }))}
-                      placeholder="Link de evidencia (máx 200 chars)"
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition"
+                      placeholder="Link de evidencia (max 200 chars)"
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition"
                     />
                     <button
                       onClick={() => handleSubmitEvidence({ access, pool })}
                       disabled={isSending || submitting === access.address || !evidenceInputs[access.address]}
-                      className="rounded-lg bg-violet-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {submitting === access.address ? "Enviando..." : "Enviar evidencia"}
                     </button>
                   </div>
                 )}
+
                 {access.isSubmitted && !access.isApproved && (
-                  <p className="text-xs text-yellow-600">Evidencia enviada. Pendiente de revisión del mentor.</p>
+                  <p className="text-xs text-yellow-500">Evidencia enviada. Pendiente de revision del mentor.</p>
                 )}
                 {access.isApproved && access.hasClaimed && (
                   <p className="text-xs text-gray-500">Ya reclamaste tu reward en este pool.</p>

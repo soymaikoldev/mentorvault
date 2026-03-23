@@ -20,7 +20,15 @@ import {
   solFromLamports,
 } from "../lib/mentorvault";
 
-export function MentorTab({ walletAddress }: { walletAddress: Address }) {
+type Metric = { label: string; value: string; hint?: string };
+
+export function MentorTab({
+  walletAddress,
+  onMetrics,
+}: {
+  walletAddress: Address;
+  onMetrics?: (items: Metric[]) => void;
+}) {
   const { send, isSending } = useSendTransaction();
   const [pools, setPools] = useState<PoolAccount[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +52,19 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
   }, [walletAddress]);
 
   useEffect(() => { loadPools(); }, [loadPools]);
+  useEffect(() => {
+    if (!onMetrics) return;
+    const totalPools = pools.length;
+    const totalRewarded = pools.reduce((s, p) => s + p.studentsRewarded, 0);
+    const totalCapacity = pools.reduce((s, p) => s + p.maxStudents, 0);
+    const pending = totalCapacity - totalRewarded;
+    onMetrics([
+      { label: "Pools asignados", value: String(totalPools) },
+      { label: "Reclamados", value: String(totalRewarded) },
+      { label: "Pendientes", value: String(pending) },
+      { label: "Cupo total", value: String(totalCapacity) },
+    ]);
+  }, [onMetrics, pools]);
 
   const handleApproveStudent = async (pool: PoolAccount) => {
     const studentAddr = studentInputs[pool.address]?.trim();
@@ -57,10 +78,10 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
         instructions: [{
           programAddress: PROGRAM_ADDRESS,
           accounts: [
-            { address: walletAddress, role: 3 },   // mentor: WritableSigner
-            { address: poolPda, role: 0 },           // pool: Readonly
-            { address: studentAddr as Address, role: 0 }, // student: Readonly (UncheckedAccount)
-            { address: studentAccessPda, role: 1 }, // student_access: Writable (init)
+            { address: walletAddress, role: 3 },
+            { address: poolPda, role: 0 },
+            { address: studentAddr as Address, role: 0 },
+            { address: studentAccessPda, role: 1 },
             { address: SYSTEM_PROGRAM_ADDRESS, role: 0 },
           ],
           data: buildApproveStudentData(),
@@ -107,10 +128,10 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
         instructions: [{
           programAddress: PROGRAM_ADDRESS,
           accounts: [
-            { address: walletAddress, role: 3 },   // mentor: WritableSigner
-            { address: poolPda, role: 0 },           // pool: Readonly
-            { address: studentAddr as Address, role: 0 }, // student: Readonly
-            { address: studentAccessPda, role: 1 }, // student_access: Writable
+            { address: walletAddress, role: 3 },
+            { address: poolPda, role: 0 },
+            { address: studentAddr as Address, role: 0 },
+            { address: studentAccessPda, role: 1 },
           ],
           data: buildReviewSubmissionData(approve, feedback),
         }],
@@ -139,29 +160,36 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">Pools donde eres mentor</p>
+        <p className="text-sm text-gray-400">Pools donde eres mentor</p>
         <button onClick={loadPools} disabled={loading} className="text-xs text-gray-500 hover:text-gray-300 transition">
           {loading ? "Cargando..." : "Actualizar"}
         </button>
       </div>
 
       {pools.length === 0 && !loading && (
-        <p className="text-sm text-gray-600 py-10 text-center">
-          No eres mentor en ningún pool aún.
+        <p className="text-sm text-gray-500 py-10 text-center">
+          No eres mentor en ningun pool aun.
           <br />
-          <span className="text-xs text-gray-700 mt-1 block">Pide al sponsor que te asigne como mentor.</span>
+          <span className="text-xs text-gray-600 mt-1 block">Pide al sponsor que te asigne como mentor.</span>
         </p>
       )}
 
       {pools.map((pool) => (
-        <div key={pool.address} className="rounded-xl border border-white/8 bg-white/3 p-5 space-y-4">
+        <div key={pool.address} className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4 backdrop-blur">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-white">{pool.poolName}</p>
-              <p className="font-mono text-xs text-gray-500 mt-0.5">{shortAddress(pool.address)}</p>
+              <a
+                href={explorerAddressUrl(pool.address)}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-xs text-gray-500 mt-0.5 inline-flex hover:text-gray-300 transition"
+              >
+                {shortAddress(pool.address)}
+              </a>
             </div>
             <div className="text-right text-xs text-gray-500 space-y-1">
-              <div>Reward: <span className="text-gray-300">{solFromLamports(pool.rewardPerStudent)} SOL</span></div>
+              <div>Reward: <span className="text-gray-200">{solFromLamports(pool.rewardPerStudent)} SOL</span></div>
               <div className={`font-medium ${pool.studentsRewarded >= pool.maxStudents ? "text-gray-500" : "text-emerald-400"}`}>
                 {pool.studentsRewarded}/{pool.maxStudents} reclamados
               </div>
@@ -175,34 +203,34 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                 value={studentInputs[pool.address] ?? ""}
                 onChange={(e) => setStudentInputs((prev) => ({ ...prev, [pool.address]: e.target.value.trim() }))}
                 placeholder="Pubkey del estudiante (base58)..."
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition font-mono"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition font-mono"
               />
               <button
                 onClick={() => handleApproveStudent(pool)}
                 disabled={isSending || !studentInputs[pool.address] || (studentInputs[pool.address]?.length ?? 0) < 32 || pool.studentsRewarded >= pool.maxStudents}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                className="rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {isSending ? "Confirmando..." : "Registrar"}
               </button>
             </div>
             {pool.studentsRewarded >= pool.maxStudents && (
-              <p className="text-xs text-yellow-600">Pool completo — no se pueden registrar más estudiantes.</p>
+              <p className="text-xs text-yellow-600">Pool completo — no se pueden registrar mas estudiantes.</p>
             )}
           </div>
 
-          <div className="space-y-3 pt-2 border-t border-white/5">
+          <div className="space-y-3 pt-2 border-t border-white/10">
             <label className="block text-xs text-gray-400 font-medium">Revisar evidencia</label>
             <div className="flex gap-2">
               <input
                 value={reviewStudents[pool.address] ?? ""}
                 onChange={(e) => setReviewStudents((prev) => ({ ...prev, [pool.address]: e.target.value.trim() }))}
                 placeholder="Pubkey del estudiante..."
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition font-mono"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition font-mono"
               />
               <button
                 onClick={() => handleLoadEvidence(pool)}
                 disabled={isSending || !reviewStudents[pool.address]}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 disabled:opacity-40"
+                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/15 disabled:opacity-40"
               >
                 Cargar
               </button>
@@ -217,7 +245,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                       href={reviewInfo[pool.address]?.evidenceUri}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-violet-300 hover:text-violet-200 underline"
+                      className="text-cyan-300 hover:text-cyan-200 underline"
                     >
                       {reviewInfo[pool.address]?.evidenceUri}
                     </a>
@@ -226,7 +254,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <span className={`rounded-full px-2 py-0.5 ${reviewInfo[pool.address]?.isSubmitted ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-gray-500"}`}>
+                  <span className={`rounded-full px-2 py-0.5 ${reviewInfo[pool.address]?.isSubmitted ? "bg-cyan-500/15 text-cyan-300" : "bg-white/5 text-gray-500"}`}>
                     Enviado
                   </span>
                   <span className={`rounded-full px-2 py-0.5 ${reviewInfo[pool.address]?.isApproved ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-gray-500"}`}>
@@ -234,7 +262,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                   </span>
                 </div>
                 {reviewInfo[pool.address]?.mentorFeedback && (
-                  <div>Feedback: <span className="text-gray-300">{reviewInfo[pool.address]?.mentorFeedback}</span></div>
+                  <div>Feedback: <span className="text-gray-200">{reviewInfo[pool.address]?.mentorFeedback}</span></div>
                 )}
               </div>
             )}
@@ -242,8 +270,8 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
             <textarea
               value={reviewFeedback[pool.address] ?? ""}
               onChange={(e) => setReviewFeedback((prev) => ({ ...prev, [pool.address]: e.target.value.slice(0, 160) }))}
-              placeholder="Feedback para el estudiante (máx 160 chars)"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-violet-500/50 transition"
+              placeholder="Feedback para el estudiante (max 160 chars)"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-400/60 transition"
               rows={2}
             />
 
@@ -251,7 +279,7 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
               <select
                 value={(reviewApprove[pool.address] ?? true) ? "approve" : "reject"}
                 onChange={(e) => setReviewApprove((prev) => ({ ...prev, [pool.address]: e.target.value === "approve" }))}
-                className="rounded-lg border border-white/10 bg-[#1c1c1f] px-3 py-2 text-xs text-white outline-none focus:border-violet-500/50 transition"
+                className="rounded-lg border border-white/10 bg-[#12151b] px-3 py-2 text-xs text-white outline-none focus:border-cyan-400/60 transition"
               >
                 <option value="approve">Aprobar</option>
                 <option value="reject">Rechazar</option>
@@ -261,12 +289,12 @@ export function MentorTab({ walletAddress }: { walletAddress: Address }) {
                 disabled={isSending || !reviewStudents[pool.address]}
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isSending ? "Enviando..." : "Enviar revisión"}
+                {isSending ? "Enviando..." : "Enviar revision"}
               </button>
             </div>
           </div>
 
-          <div className="pt-1 border-t border-white/5">
+          <div className="pt-1 border-t border-white/10">
             <p className="text-xs text-gray-600">
               Sponsor:{" "}
               <a
