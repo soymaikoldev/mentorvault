@@ -1,6 +1,6 @@
 # mentorvault-app
 
-Next.js dApp para MentorVault (rewards educativos en Solana) con roles de Sponsor, Mentor y Estudiante.
+Frontend Next.js del dApp MentorVault — rewards educativos en Solana con roles de Sponsor, Mentor y Estudiante.
 
 ## Quickstart
 
@@ -9,14 +9,16 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:3000, conecta tu wallet y usa devnet.
+Abre http://localhost:3000, conecta tu wallet y asegurate de estar en **devnet**.
 
 ## Demo rapida (devnet)
 
-1. Sponsor crea un pool y define reward por estudiante.
-2. Sponsor asigna un mentor.
-3. Mentor aprueba al estudiante.
-4. Estudiante reclama el reward.
+1. **Sponsor** — crea un pool: nombre, reward por estudiante (SOL) y cupo maximo.
+2. **Sponsor** — asigna un mentor al pool pegando su pubkey.
+3. **Mentor** — registra al estudiante ingresando su pubkey.
+4. **Estudiante** — envia evidencia (link).
+5. **Mentor** — revisa y aprueba la evidencia con feedback.
+6. **Estudiante** — reclama el reward en la tab Estudiante.
 
 Devnet faucet: https://faucet.solana.com/
 
@@ -26,26 +28,35 @@ Devnet faucet: https://faucet.solana.com/
 npm run devnet-smoke
 ```
 
-Requiere una wallet local en `~/.config/solana/id.json` o `SOLANA_KEYPAIR=/ruta/al/keypair.json`.
+Requiere wallet local en `~/.config/solana/id.json` o `SOLANA_KEYPAIR=/ruta/al/keypair.json`.
 
 ## Stack
 
-| Layer         | Technology                              |
+| Capa          | Tecnologia                              |
 | ------------- | --------------------------------------- |
 | Frontend      | Next.js 16, React 19, TypeScript        |
-| Styling       | Tailwind CSS v4                         |
-| Solana Client | `@solana/client`, `@solana/react-hooks` |
-| Program       | Anchor (Rust)                           |
+| Estilos       | Tailwind CSS v4                         |
+| Solana client | `@solana/client`, `@solana/react-hooks` |
+| Programa      | Anchor (Rust), devnet                   |
 
-## Project Structure
+## Estructura
 
 ```
-+-- app/
-�   +-- components/
-�   +-- lib/
-�   +-- page.tsx
-+-- anchor/
-�   +-- programs/vault/
-+-- scripts/
-    +-- devnet-smoke.js
+app/
+  components/   sponsor-tab, mentor-tab, student-tab, wallet-button
+  lib/          mentorvault.ts — PDAs, instrucciones y helpers RPC
+  page.tsx      pagina principal con selector de rol
+anchor/
+  programs/vault/src/lib.rs   logica on-chain
+scripts/
+  devnet-smoke.js   smoke test end-to-end
 ```
+
+## Scripts
+
+| Comando               | Descripcion                              |
+| --------------------- | ---------------------------------------- |
+| `npm run dev`         | Servidor de desarrollo                   |
+| `npm run build`       | Build de produccion                      |
+| `npm run devnet-smoke`| Smoke test end-to-end en devnet          |
+| `npm run anchor-build`| Compila el programa Anchor               |

@@ -6,13 +6,14 @@ import { WalletButton } from "./components/wallet-button";
 import { SponsorTab } from "./components/sponsor-tab";
 import { MentorTab } from "./components/mentor-tab";
 import { StudentTab } from "./components/student-tab";
+import { PROGRAM_ADDRESS, explorerAddressUrl, shortAddress } from "./lib/mentorvault";
 
 type Tab = "sponsor" | "mentor" | "estudiante";
 
 const TABS: { id: Tab; label: string; desc: string }[] = [
   { id: "sponsor", label: "Sponsor", desc: "Crea pools y asigna mentores" },
-  { id: "mentor", label: "Mentor", desc: "Aprueba estudiantes" },
-  { id: "estudiante", label: "Estudiante", desc: "Reclama tu reward" },
+  { id: "mentor", label: "Mentor", desc: "Revisa evidencia y aprueba" },
+  { id: "estudiante", label: "Estudiante", desc: "Envía evidencia y reclama" },
 ];
 
 export default function Home() {
@@ -45,15 +46,20 @@ export default function Home() {
             Protocolo de Rewards Educativos
           </h1>
           <p className="text-sm text-gray-500 max-w-xl">
-            Sponsors depositan SOL como recompensas, mentores validan quién las merece, y solo los estudiantes aprobados pueden reclamarlas.
+            Sponsors depositan SOL como recompensas, mentores validan la evidencia, y solo los estudiantes aprobados pueden reclamarla.
           </p>
           <div className="flex items-center gap-2 pt-1">
             <span className="rounded-md bg-white/5 border border-white/8 px-2.5 py-1 font-mono text-xs text-gray-500">
               devnet
             </span>
-            <span className="rounded-md bg-white/5 border border-white/8 px-2.5 py-1 font-mono text-xs text-gray-600 hidden sm:block">
-              4RqpxT...m1yX
-            </span>
+            <a
+              href={explorerAddressUrl(PROGRAM_ADDRESS)}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md bg-white/5 border border-white/8 px-2.5 py-1 font-mono text-xs text-gray-600 hidden sm:block hover:text-gray-400 transition"
+            >
+              {shortAddress(PROGRAM_ADDRESS)}
+            </a>
           </div>
         </div>
 
@@ -124,7 +130,7 @@ function NotConnectedCard() {
       <p className="text-xs text-gray-700">
         ¿Necesitas SOL de prueba?{" "}
         <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer" className="text-violet-500 hover:text-violet-400 underline">
-          Faucet de devnet ->
+          Faucet de devnet {"->"}
         </a>
       </p>
     </div>

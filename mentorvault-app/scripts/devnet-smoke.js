@@ -18,15 +18,18 @@ const {
   sendAndConfirmTransaction,
 } = web3;
 
-const PROGRAM_ID = new PublicKey("4RqpxTxbpLepFuaLK8pidbReLDxmGX8M9gKZEadXm1yX");
+const PROGRAM_ID = new PublicKey("Bz1ifM7QV7pBSV9SmzRTDLn7bwYQzZurDpZkMBR1dM7n");
 const RPC = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
 
 const DISC_CREATE_POOL = Buffer.from([233, 146, 209, 142, 207, 104, 64, 188]);
 const DISC_ADD_MENTOR = Buffer.from([246, 91, 90, 224, 82, 235, 65, 66]);
 const DISC_APPROVE_STUDENT = Buffer.from([6, 121, 214, 30, 220, 176, 57, 183]);
+const DISC_SUBMIT_EVIDENCE = Buffer.from([12, 169, 228, 194, 229, 31, 44, 39]);
+const DISC_REVIEW_SUBMISSION = Buffer.from([183, 241, 153, 149, 85, 122, 198, 136]);
 const DISC_CLAIM_REWARD = Buffer.from([149, 95, 181, 242, 94, 90, 158, 162]);
 
 const POOL_DISCRIMINATOR = Buffer.from([241, 154, 109, 4, 17, 177, 109, 188]);
+const STUDENT_ACCESS_DISCRIMINATOR = Buffer.from([179, 133, 17, 7, 106, 184, 42, 74]);
 
 function explorerTx(sig) {
   return `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
@@ -92,6 +95,22 @@ function parsePoolAccount(data) {
   offset += 2;
   const bump = data.readUInt8(offset);
   return { poolName, rewardPerStudent, maxStudents, studentsRewarded, bump };
+}
+
+function parseStudentAccess(data) {
+  if (data.length < 8) throw new Error("StudentAccess account too small");
+  if (!data.slice(0, 8).equals(STUDENT_ACCESS_DISCRIMINATOR)) {
+    throw new Error("StudentAccess discriminator mismatch");
+  }
+  let off = 8 + 32 + 32;
+  const isSubmitted = data[off++] === 1;
+  const isApproved = data[off++] === 1;
+  const hasClaimed = data[off++] === 1;
+  const evidenceLen = data.readUInt32LE(off); off += 4;
+  const evidenceUri = data.slice(off, off + evidenceLen).toString("utf8"); off += evidenceLen;
+  const feedbackLen = data.readUInt32LE(off); off += 4;
+  const mentorFeedback = data.slice(off, off + feedbackLen).toString("utf8"); off += feedbackLen;
+  return { isSubmitted, isApproved, hasClaimed, evidenceUri, mentorFeedback };
 }
 
 async function main() {
@@ -161,6 +180,36 @@ async function main() {
     data: DISC_APPROVE_STUDENT,
   });
 
+  const submitData = Buffer.concat([
+    DISC_SUBMIT_EVIDENCE,
+    borshString("https://example.com/evidencia"),
+  ]);
+  const submitIx = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: student.publicKey, isSigner: true, isWritable: true },
+      { pubkey: poolPda, isSigner: false, isWritable: false },
+      { pubkey: studentAccessPda, isSigner: false, isWritable: true },
+    ],
+    data: submitData,
+  });
+
+  const reviewData = Buffer.concat([
+    DISC_REVIEW_SUBMISSION,
+    Buffer.from([1]),
+    borshString("Buen trabajo, aprobado"),
+  ]);
+  const reviewIx = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+      { pubkey: poolPda, isSigner: false, isWritable: false },
+      { pubkey: student.publicKey, isSigner: false, isWritable: false },
+      { pubkey: studentAccessPda, isSigner: false, isWritable: true },
+    ],
+    data: reviewData,
+  });
+
   const claimIx = new TransactionInstruction({
     programId: PROGRAM_ID,
     keys: [
@@ -202,16 +251,37 @@ async function main() {
 
   const sig4 = await sendAndConfirmTransaction(
     conn,
+    new Transaction().add(submitIx),
+    [student]
+  );
+  console.log("submit_evidence:", sig4, explorerTx(sig4));
+
+  const sig5 = await sendAndConfirmTransaction(
+    conn,
+    new Transaction().add(reviewIx),
+    [payer]
+  );
+  console.log("review_submission:", sig5, explorerTx(sig5));
+
+  const sig6 = await sendAndConfirmTransaction(
+    conn,
     new Transaction().add(claimIx),
     [student]
   );
-  console.log("claim_reward:", sig4, explorerTx(sig4));
+  console.log("claim_reward:", sig6, explorerTx(sig6));
 
   const poolInfo = await conn.getAccountInfo(poolPda, "confirmed");
   if (!poolInfo) throw new Error("Pool account not found");
   const parsed = parsePoolAccount(Buffer.from(poolInfo.data));
   if (parsed.studentsRewarded !== 1) {
     throw new Error(`Expected students_rewarded = 1, got ${parsed.studentsRewarded}`);
+  }
+
+  const accessInfo = await conn.getAccountInfo(studentAccessPda, "confirmed");
+  if (!accessInfo) throw new Error("StudentAccess account not found");
+  const accessParsed = parseStudentAccess(Buffer.from(accessInfo.data));
+  if (!accessParsed.isSubmitted || !accessParsed.isApproved || !accessParsed.hasClaimed) {
+    throw new Error("Expected submitted + approved + claimed in StudentAccess");
   }
 
   console.log("Smoke test OK. students_rewarded =", parsed.studentsRewarded);

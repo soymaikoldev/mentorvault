@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("4RqpxTxbpLepFuaLK8pidbReLDxmGX8M9gKZEadXm1yX");
+declare_id!("Bz1ifM7QV7pBSV9SmzRTDLn7bwYQzZurDpZkMBR1dM7n");
 
 // ─── Program ───────────────────────────────────────────────────────────────────
 
@@ -65,10 +65,52 @@ pub mod vault {
         let student_access = &mut ctx.accounts.student_access;
         student_access.student = ctx.accounts.student.key();
         student_access.pool = ctx.accounts.pool.key();
-        student_access.is_approved = true;
+        student_access.is_submitted = false;
+        student_access.is_approved = false;
         student_access.has_claimed = false;
+        student_access.evidence_uri = "".to_string();
+        student_access.mentor_feedback = "".to_string();
         student_access.bump = ctx.bumps.student_access;
 
+        Ok(())
+    }
+
+    /// Student submits evidence for the milestone.
+    pub fn submit_evidence(ctx: Context<SubmitEvidence>, evidence_uri: String) -> Result<()> {
+        require!(
+            evidence_uri.len() <= 200,
+            MentorVaultError::EvidenceTooLong
+        );
+        let student_access = &mut ctx.accounts.student_access;
+        student_access.evidence_uri = evidence_uri;
+        student_access.is_submitted = true;
+        student_access.is_approved = false;
+        student_access.mentor_feedback = "".to_string();
+        Ok(())
+    }
+
+    /// Mentor reviews a submission and optionally approves it.
+    pub fn review_submission(
+        ctx: Context<ReviewSubmission>,
+        approve: bool,
+        feedback: String,
+    ) -> Result<()> {
+        require!(
+            feedback.len() <= 160,
+            MentorVaultError::FeedbackTooLong
+        );
+        let student_access = &mut ctx.accounts.student_access;
+        student_access.mentor_feedback = feedback;
+        if approve {
+            require!(
+                student_access.is_submitted,
+                MentorVaultError::EvidenceNotSubmitted
+            );
+            student_access.is_approved = true;
+        } else {
+            student_access.is_submitted = false;
+            student_access.is_approved = false;
+        }
         Ok(())
     }
 
@@ -81,6 +123,14 @@ pub mod vault {
         );
 
         let reward_amount = pool.reward_per_student;
+        require!(
+            ctx.accounts.student_access.is_submitted,
+            MentorVaultError::EvidenceNotSubmitted
+        );
+        require!(
+            ctx.accounts.student_access.is_approved,
+            MentorVaultError::SubmissionNotApproved
+        );
         require!(
             ctx.accounts.vault.lamports() >= reward_amount,
             MentorVaultError::InsufficientVaultFunds
@@ -137,14 +187,17 @@ impl Pool {
 pub struct StudentAccess {
     pub student: Pubkey,   // 32
     pub pool: Pubkey,      // 32
-    pub is_approved: bool, // 1
-    pub has_claimed: bool, // 1
+    pub is_submitted: bool, // 1
+    pub is_approved: bool,  // 1
+    pub has_claimed: bool,  // 1
+    pub evidence_uri: String,    // 4 + 200
+    pub mentor_feedback: String, // 4 + 160
     pub bump: u8,          // 1
 }
 
 impl StudentAccess {
-    /// 8 (discriminator) + 32 + 32 + 1 + 1 + 1
-    pub const LEN: usize = 8 + 32 + 32 + 1 + 1 + 1;
+    /// 8 (discriminator) + 32 + 32 + 1 + 1 + 1 + (4 + 200) + (4 + 160) + 1
+    pub const LEN: usize = 444;
 }
 
 // ─── Instruction Contexts ──────────────────────────────────────────────────────
@@ -217,6 +270,52 @@ pub struct ApproveStudent<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SubmitEvidence<'info> {
+    #[account(mut)]
+    pub student: Signer<'info>,
+
+    #[account(
+        seeds = [b"pool", pool.sponsor.as_ref(), pool.pool_name.as_bytes()],
+        bump = pool.bump,
+    )]
+    pub pool: Account<'info, Pool>,
+
+    #[account(
+        mut,
+        seeds = [b"student", pool.key().as_ref(), student.key().as_ref()],
+        bump = student_access.bump,
+        constraint = student_access.student == student.key() @ MentorVaultError::UnauthorizedStudent,
+        constraint = student_access.pool == pool.key() @ MentorVaultError::InvalidPool,
+    )]
+    pub student_access: Account<'info, StudentAccess>,
+}
+
+#[derive(Accounts)]
+pub struct ReviewSubmission<'info> {
+    #[account(mut)]
+    pub mentor: Signer<'info>,
+
+    #[account(
+        seeds = [b"pool", pool.sponsor.as_ref(), pool.pool_name.as_bytes()],
+        bump = pool.bump,
+        constraint = pool.mentor == mentor.key() @ MentorVaultError::UnauthorizedMentor,
+    )]
+    pub pool: Account<'info, Pool>,
+
+    /// CHECK: The student's pubkey — used as seed and stored.
+    pub student: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"student", pool.key().as_ref(), student.key().as_ref()],
+        bump = student_access.bump,
+        constraint = student_access.student == student.key() @ MentorVaultError::UnauthorizedStudent,
+        constraint = student_access.pool == pool.key() @ MentorVaultError::InvalidPool,
+    )]
+    pub student_access: Account<'info, StudentAccess>,
+}
+
+#[derive(Accounts)]
 pub struct ClaimReward<'info> {
     #[account(mut)]
     pub student: Signer<'info>,
@@ -241,7 +340,8 @@ pub struct ClaimReward<'info> {
         bump = student_access.bump,
         constraint = student_access.student == student.key() @ MentorVaultError::UnauthorizedStudent,
         constraint = student_access.pool == pool.key() @ MentorVaultError::InvalidPool,
-        constraint = student_access.is_approved @ MentorVaultError::StudentNotApproved,
+        constraint = student_access.is_submitted @ MentorVaultError::EvidenceNotSubmitted,
+        constraint = student_access.is_approved @ MentorVaultError::SubmissionNotApproved,
         constraint = !student_access.has_claimed @ MentorVaultError::AlreadyClaimed,
     )]
     pub student_access: Account<'info, StudentAccess>,
@@ -267,6 +367,10 @@ pub enum MentorVaultError {
     MentorNotAssigned,
     #[msg("Student has not been approved by the mentor")]
     StudentNotApproved,
+    #[msg("Evidence not submitted by student")]
+    EvidenceNotSubmitted,
+    #[msg("Submission has not been approved by mentor")]
+    SubmissionNotApproved,
     #[msg("Student has already claimed their reward")]
     AlreadyClaimed,
     #[msg("Pool has reached the maximum number of rewarded students")]
@@ -277,6 +381,10 @@ pub enum MentorVaultError {
     UnauthorizedStudent,
     #[msg("Student access record does not belong to this pool")]
     InvalidPool,
+    #[msg("Evidence URI too long")]
+    EvidenceTooLong,
+    #[msg("Mentor feedback too long")]
+    FeedbackTooLong,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
 }

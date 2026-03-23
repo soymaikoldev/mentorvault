@@ -12,7 +12,9 @@ import {
   buildAddMentorData,
   fetchPoolsBySponsor,
   type PoolAccount,
+  formatTxError,
   shortAddress,
+  explorerAddressUrl,
   explorerTxUrl,
   solFromLamports,
 } from "../lib/mentorvault";
@@ -74,7 +76,8 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
       setPoolName(""); setRewardSol(""); setMaxStudents("");
       await loadPools();
     } catch (e) {
-      setMsg({ type: "error", text: e instanceof Error ? e.message : "Error desconocido" });
+      console.error("Create pool failed", e);
+      setMsg({ type: "error", text: formatTxError(e) });
     }
   };
 
@@ -99,7 +102,8 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
       setMentorInput("");
       await loadPools();
     } catch (e) {
-      setMsg({ type: "error", text: e instanceof Error ? e.message : "Error desconocido" });
+      console.error("Add mentor failed", e);
+      setMsg({ type: "error", text: formatTxError(e) });
     }
   };
 
@@ -111,7 +115,7 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
           {msg.text}
           {msg.sig && (
             <a href={explorerTxUrl(msg.sig)} target="_blank" rel="noreferrer" className="ml-2 underline opacity-80 hover:opacity-100">
-              Ver en Explorer ->
+              Ver en Explorer {"->"}
             </a>
           )}
         </div>
@@ -224,7 +228,14 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-white">{p.poolName}</p>
-                    <p className="font-mono text-xs text-gray-500 mt-0.5">{shortAddress(p.address)}</p>
+                    <a
+                      href={explorerAddressUrl(p.address)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-xs text-gray-500 mt-0.5 inline-flex hover:text-gray-300 transition"
+                    >
+                      {shortAddress(p.address)}
+                    </a>
                   </div>
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.studentsRewarded >= p.maxStudents ? "bg-gray-800 text-gray-400" : "bg-emerald-500/15 text-emerald-400"}`}>
                     {p.studentsRewarded}/{p.maxStudents} estudiantes
@@ -232,9 +243,21 @@ export function SponsorTab({ walletAddress }: { walletAddress: Address }) {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
                   <div>Reward: <span className="text-gray-300">{solFromLamports(p.rewardPerStudent)} SOL</span></div>
-                  <div>Mentor: <span className={`font-mono ${p.mentor === "11111111111111111111111111111111" ? "text-yellow-600" : "text-gray-300"}`}>
-                    {p.mentor === "11111111111111111111111111111111" ? "Sin asignar" : shortAddress(p.mentor)}
-                  </span></div>
+                  <div>
+                    Mentor:{" "}
+                    {p.mentor === "11111111111111111111111111111111" ? (
+                      <span className="font-mono text-yellow-600">Sin asignar</span>
+                    ) : (
+                      <a
+                        href={explorerAddressUrl(p.mentor)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-gray-300 hover:text-gray-200 transition"
+                      >
+                        {shortAddress(p.mentor)}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

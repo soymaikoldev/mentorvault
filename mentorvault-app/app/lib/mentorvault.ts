@@ -8,7 +8,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const PROGRAM_ADDRESS =
-  "4RqpxTxbpLepFuaLK8pidbReLDxmGX8M9gKZEadXm1yX" as Address;
+  "Bz1ifM7QV7pBSV9SmzRTDLn7bwYQzZurDpZkMBR1dM7n" as Address;
 
 export const SYSTEM_PROGRAM_ADDRESS =
   "11111111111111111111111111111111" as Address;
@@ -30,6 +30,8 @@ const DISC_CREATE_POOL = new Uint8Array([233, 146, 209, 142, 207, 104, 64, 188])
 const DISC_ADD_MENTOR = new Uint8Array([246, 91, 90, 224, 82, 235, 65, 66]);
 const DISC_APPROVE_STUDENT = new Uint8Array([6, 121, 214, 30, 220, 176, 57, 183]);
 const DISC_CLAIM_REWARD = new Uint8Array([149, 95, 181, 242, 94, 90, 158, 162]);
+const DISC_SUBMIT_EVIDENCE = new Uint8Array([12, 169, 228, 194, 229, 31, 44, 39]);
+const DISC_REVIEW_SUBMISSION = new Uint8Array([183, 241, 153, 149, 85, 122, 198, 136]);
 
 // ─── Account Types ────────────────────────────────────────────────────────────
 
@@ -48,8 +50,11 @@ export type StudentAccessAccount = {
   address: Address;
   student: Address;
   pool: Address;
+  isSubmitted: boolean;
   isApproved: boolean;
   hasClaimed: boolean;
+  evidenceUri: string;
+  mentorFeedback: string;
   bump: number;
 };
 
@@ -141,6 +146,17 @@ export function buildApproveStudentData(): Uint8Array {
   return DISC_APPROVE_STUDENT.slice();
 }
 
+export function buildSubmitEvidenceData(evidenceUri: string): Uint8Array {
+  return concat(DISC_SUBMIT_EVIDENCE, encodeBorshString(evidenceUri));
+}
+
+export function buildReviewSubmissionData(
+  approve: boolean,
+  feedback: string
+): Uint8Array {
+  return concat(DISC_REVIEW_SUBMISSION, new Uint8Array([approve ? 1 : 0]), encodeBorshString(feedback));
+}
+
 export function buildClaimRewardData(): Uint8Array {
   return DISC_CLAIM_REWARD.slice();
 }
@@ -190,11 +206,18 @@ export function parseStudentAccessAccount(
 
   const student = readPubkey(data, 8);
   const pool = readPubkey(data, 40);
-  const isApproved = data[72] === 1;
-  const hasClaimed = data[73] === 1;
-  const bump = data[74];
+  const view = new DataView(data.buffer, data.byteOffset);
+  let off = 72;
+  const isSubmitted = data[off++] === 1;
+  const isApproved = data[off++] === 1;
+  const hasClaimed = data[off++] === 1;
+  const evidenceLen = view.getUint32(off, true); off += 4;
+  const evidenceUri = new TextDecoder().decode(data.slice(off, off + evidenceLen)); off += evidenceLen;
+  const feedbackLen = view.getUint32(off, true); off += 4;
+  const mentorFeedback = new TextDecoder().decode(data.slice(off, off + feedbackLen)); off += feedbackLen;
+  const bump = data[off];
 
-  return { address, student, pool, isApproved, hasClaimed, bump };
+  return { address, student, pool, isSubmitted, isApproved, hasClaimed, evidenceUri, mentorFeedback, bump };
 }
 
 // ─── RPC Helpers ─────────────────────────────────────────────────────────────
@@ -282,14 +305,58 @@ export async function fetchPoolByAddress(addr: Address): Promise<PoolAccount | n
   return parsePoolAccount(addr, bytes);
 }
 
+export async function fetchStudentAccessByAddress(
+  addr: Address
+): Promise<StudentAccessAccount | null> {
+  const resp = await fetch(DEVNET_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "getAccountInfo",
+      params: [addr, { encoding: "base64" }],
+    }),
+  });
+  const json = await resp.json();
+  if (!json.result?.value) return null;
+  const bytes = Uint8Array.from(atob(json.result.value.data[0]), (c) => c.charCodeAt(0));
+  return parseStudentAccessAccount(addr, bytes);
+}
+
 export function shortAddress(addr: string) {
   return addr.slice(0, 4) + "..." + addr.slice(-4);
 }
 
 export function explorerTxUrl(sig: string) {
-  return `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
+  return `https://orbmarkets.io/tx/${sig}?cluster=devnet`;
+}
+
+export function explorerAddressUrl(addr: string) {
+  return `https://orbmarkets.io/address/${addr}?cluster=devnet`;
 }
 
 export function solFromLamports(lamports: bigint) {
   return (Number(lamports) / Number(LAMPORTS_PER_SOL)).toFixed(4);
+}
+
+export function formatTxError(err: unknown) {
+  const anyErr = err as { message?: string; transactionPlanResult?: unknown; logs?: unknown };
+  const parts: string[] = [];
+  if (anyErr?.message) parts.push(anyErr.message);
+  if (anyErr?.transactionPlanResult) {
+    try {
+      parts.push(`transactionPlanResult=${JSON.stringify(anyErr.transactionPlanResult)}`);
+    } catch {
+      parts.push("transactionPlanResult=[unserializable]");
+    }
+  }
+  if (anyErr?.logs) {
+    try {
+      parts.push(`logs=${JSON.stringify(anyErr.logs)}`);
+    } catch {
+      parts.push("logs=[unserializable]");
+    }
+  }
+  return parts.length > 0 ? parts.join(" | ") : "Error desconocido";
 }
