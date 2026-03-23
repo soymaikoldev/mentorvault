@@ -28,6 +28,17 @@ npm install
 npm run dev
 ```
 
+## RPC de Helius en devnet
+Configura la app para usar Helius tanto en local como en Vercel:
+
+```bash
+NEXT_PUBLIC_HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=TU_API_KEY
+```
+
+Notas:
+- La misma API key de Helius funciona en devnet; cambia la base de la URL, no la key.
+- Si no defines `NEXT_PUBLIC_HELIUS_RPC_URL`, la app usa `https://api.devnet.solana.com` como fallback.
+
 ## Demo
 - (Agregar enlace o captura si aplica)
 
